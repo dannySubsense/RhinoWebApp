@@ -1,0 +1,10 @@
+# Ignore node modules
+node_modules/
+# Ignore VSCode settings
+.vscode/
+# Ignore Visual Studio settings
+.vs/
+# Ignore build outputs
+dist/
+# Ignore system files
+.DS_Store
