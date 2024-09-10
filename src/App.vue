@@ -12,7 +12,7 @@
         <!-- RhinoManagement component to handle Rhino geometry parsing -->
         <RhinoManagement 
             @fileUploaded="onFileUploaded"              
-            :onGeometryParsed="handleGeometryParsed"
+            @GeometryParsed="handleGeometryParsed"
             :isProductionTracking="isProductionTracking" />
 
         <div class="mode-switch" v-if="modelLoaded">
@@ -45,7 +45,7 @@
             <div v-for="(color, label) in productionColorMapping" :key="label" class="legend-item">
                 <div class="color-box" :style="{ backgroundColor: color }"></div>
                 <span class="legend-label">
-                    {{ label }} {{phaseCounts[label] || 0 }} units, ({{ getPhasePercentage(label) }}%)
+                    {{ label.toString() }} {{phaseCounts[label] || 0 }} units, ({{ getPhasePercentage(label.toString()) }}%)
                 </span>
             </div>
 
@@ -135,7 +135,7 @@
                 }
             };
 
-            const updateCounts = (newPhaseCounts, newTotalUnits) => {
+            const updateCounts = (newPhaseCounts: Record<string, number>, newTotalUnits: number) => {
                 console.log('Updating counts after production colors are applied...');
                 phaseCounts.value = { ...newPhaseCounts };  // Update reactive phaseCounts
                 totalUnits.value = newTotalUnits;
