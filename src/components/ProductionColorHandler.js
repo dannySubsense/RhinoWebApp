@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 export class ProductionColorHandler {
     applyProductionColors(parsedData, scene, totalUnits) {
-        this.resetCounts();
+        this.resetCounts(); // Resets counts for each phase
         this.totalUnits = totalUnits !== undefined ? totalUnits : this.totalUnits;
+        // Loop through parsed Excel data
         parsedData.forEach(entry => {
             const pid = entry.PID;
             const reachedPhases = this.getAllReachedPhases(entry);
@@ -11,14 +12,24 @@ export class ProductionColorHandler {
             });
             const mostAdvancedPhase = reachedPhases[reachedPhases.length - 1];
             const color = mostAdvancedPhase ? this.colorMapping[mostAdvancedPhase] : null;
+            // Traverse the scene and apply the production color to matching objects
             scene.traverse((object) => {
                 if (object.userData?.attributes?.userStrings) {
                     const pidValue = object.userData.attributes.userStrings.find((str) => str[0] === 'PID')?.[1];
                     if (pidValue === pid) {
-                        object.userData.attributes.productionTrackingColor = color;
+                        if (color) {
+                            // Update the productionTrackingColor only if we have a valid phase color
+                            object.userData.attributes.productionTrackingColor = color;
+                        }
+                        else {
+                            // If there's no phase color, set to gray if it's not already set
+                            object.userData.attributes.productionTrackingColor = object.userData.attributes.productionTrackingColor || "#808080"; // Gray
+                        }
                         object.userData.attributes.productionTrackingPhase = mostAdvancedPhase || "Not Started";
-                        if (object.material && object.material.color && color) {
-                            object.material.color.copy(color);
+                        // Apply the productionTrackingColor to the material
+                        if (object.material && object.material.color && object.userData.attributes.productionTrackingColor) {
+                            const newColor = new THREE.Color(object.userData.attributes.productionTrackingColor);
+                            object.material.color.copy(newColor);
                         }
                     }
                 }
@@ -26,8 +37,9 @@ export class ProductionColorHandler {
         });
         // Calculate "Not Started" units
         const unitsWithPhases = new Set(parsedData.map(entry => entry.PID));
-        this.notStarted = this.totalUnits - unitsWithPhases.size;
+        this.notStarted = this.totalUnits - this.phaseCounts["Released"];
     }
+    // this.notStarted = this.totalUnits - this.phaseCounts["Released"];
     constructor(totalUnits) {
         this.colorMapping = {
             "Released": new THREE.Color(0xFFA500), // Orange

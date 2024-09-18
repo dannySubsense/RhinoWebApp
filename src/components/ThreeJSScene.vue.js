@@ -241,12 +241,24 @@ export default defineComponent({
                 selectedObjectData.value = null;
             }
         };
+        const initializeProductionColors = () => {
+            scene.traverse((object) => {
+                if (object instanceof THREE.Mesh) {
+                    // Initialize productionTrackingColor to gray if it's not already set
+                    if (!object.userData.attributes.productionTrackingColor) {
+                        object.userData.attributes.productionTrackingColor = 0x808080; // Gray for Not Started
+                    }
+                }
+            });
+        };
         const toggleMode = (isProductionTracking) => {
             console.log("Toggle Mode called. Production Tracking:", isProductionTracking);
             if (isProductionTracking) {
-                // Apply production colors
+                let totalPanels = 0; // Initialize panel count
+                // Apply the productionTrackingColor (initialized to gray) to all objects
                 scene.traverse((object) => {
                     if (object.userData?.attributes?.productionTrackingColor) {
+                        totalPanels++; // Count the object
                         const prodColor = new THREE.Color(object.userData.attributes.productionTrackingColor);
                         if (object.material) {
                             if (object.material instanceof THREE.MeshStandardMaterial) {
@@ -261,25 +273,21 @@ export default defineComponent({
                         }
                     }
                 });
-                // Emit counts and percentages without modifying totalUnits
-                const { percentages, notStartedPercentage } = productionColorHandler.getPercentages();
-                const { phaseCounts, totalUnits: handlerTotalUnits } = productionColorHandler;
+                // Emit total panel count and phase counts back to App.vue
                 emit('updateCounts', {
-                    phaseCounts,
-                    totalUnits: handlerTotalUnits, // Use totalUnits from productionColorHandler
-                    percentages,
+                    phaseCounts: productionColorHandler.phaseCounts,
+                    totalUnits: productionColorHandler.totalUnits, // Use totalUnits from productionColorHandler
                     notStarted: productionColorHandler.notStarted,
-                    notStartedPercentage
+                    notStartedPercentage: productionColorHandler.getPercentages().notStartedPercentage
                 });
-                console.log(`Production Tracking Mode activated.`);
+                console.log(`Total panels in Production Tracking Mode: ${totalPanels}`);
             }
             else {
-                // Revert colors as before
+                // Revert to the original Rhino colors
                 scene.traverse((object) => {
-                    // Revert to original color or default color
-                    if (object.material && object.userData?.attributes?.originalColor) {
-                        const originalColor = new THREE.Color(object.userData.attributes.originalColor);
-                        if (object.material instanceof THREE.MeshStandardMaterial) {
+                    if (object.userData?.attributes?.objectColor) {
+                        const originalColor = new THREE.Color(object.userData.attributes.objectColor.r / 255, object.userData.attributes.objectColor.g / 255, object.userData.attributes.objectColor.b / 255);
+                        if (object.material) {
                             object.material.color.copy(originalColor);
                         }
                     }
