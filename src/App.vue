@@ -1,6 +1,5 @@
 <template>
     <div id="app">
-
         <!-- Logo in the upper right corner -->
         <div class="logo-container">
             <img src="./assets/IEF_Logo_Right_Isolated.png" alt="Logo" class="logo" />
@@ -10,10 +9,9 @@
         <div v-if="fileName" class="file-name-top">{{ fileName }}</div>
 
         <!-- RhinoManagement component to handle Rhino geometry parsing -->
-        <RhinoManagement 
-            @fileUploaded="onFileUploaded"              
-            @GeometryParsed="handleGeometryParsed"
-            :isProductionTracking="isProductionTracking" />
+        <RhinoManagement @fileUploaded="onFileUploaded"
+                         @GeometryParsed="handleGeometryParsed"
+                         :isProductionTracking="isProductionTracking" />
 
         <div class="mode-switch" v-if="modelLoaded">
             <label class="toggle-label">
@@ -28,48 +26,60 @@
         <!-- Excel Upload Button with class for styling -->
         <div v-if="isProductionTracking" class="excel-upload">
             <label for="excelUpload">Upload Excel File:</label>
-            <input type="file" id="excelUpload" @change="handleExcelUpload" accept=".xlsx">
+            <input type="file" id="excelUpload" @change="handleExcelUpload" accept=".xlsx" />
         </div>
 
         <!-- Color Legend -->
         <div v-if="isProductionTracking" class="color-legend">
-            <!-- Manually add "Not Started" label and color -->
+            <!-- "Not Started" label and color -->
             <div class="legend-item">
                 <div class="color-box" style="background-color: #808080;"></div>
                 <span class="legend-label">
-                    Not Started {{ notStartedCount }} units, ({{ notStartedPercentage }}%)
+                    Not Started: {{ notStartedCount || 0 }} units, ({{ notStartedPercentage || '0.00' }}%)
                 </span>
             </div>
 
-            <!-- Dynamically add the rest from ProductionColorHandler -->
+            <!-- Dynamically add the rest of the phases -->
             <div v-for="(color, label) in productionColorMapping" :key="label" class="legend-item">
                 <div class="color-box" :style="{ backgroundColor: color }"></div>
                 <span class="legend-label">
-                    {{ label.toString() }} {{phaseCounts[label] || 0 }} units, ({{ getPhasePercentage(label.toString()) }}%)
+                    {{ label }}: {{ phaseCounts[label] || 0 }} units, ({{ getPhasePercentage(label) || '0.00' }}%)
                 </span>
             </div>
 
             <!-- Total units at the bottom -->
-            <div class="total-units">Total: {{ totalUnits }} units</div>
+            <div class="total-units">Total: {{ totalUnits || 0 }} units</div>
         </div>
 
         <!-- Dark Mode Theme -->
         <div class="toggle-theme">
-            <button @click="toggleTheme">{{ isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode' }}</button>
+            <button @click="toggleTheme">
+                {{ isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode' }}
+            </button>
         </div>
 
-        <ThreeJSScene ref="threeJSScene" :isProductionTracking="isProductionTracking"
+        <ThreeJSScene ref="threeJSScene"
+                      :isProductionTracking="isProductionTracking"
                       @updateCounts="updateCounts"
+                      @updateTotalUnits="handleUpdateTotalUnits"
                       @handleExcelUpload="handleExcelUpload" />
     </div>
 </template>
 
 <script lang="ts">
-    import { defineComponent, ref, computed } from 'vue';
+    import { defineComponent, ref, watch } from 'vue';
     import RhinoManagement from './components/RhinoManagement.vue';
     import ThreeJSScene from './components/ThreeJSScene.vue';
     import { ProductionColorHandler } from './components/ProductionColorHandler';
     import * as THREE from 'three';
+
+    interface UpdateCountsData {
+        phaseCounts: Record<string, number>;
+        totalUnits: number;
+        percentages: Record<string, number>;
+        notStarted: number;
+        notStartedPercentage: number;
+    }
 
     export default defineComponent({
         name: 'App',
@@ -78,37 +88,37 @@
             ThreeJSScene,
         },
         setup() {
-            const fileName = ref<string | null>(null); // File name state
+            const fileName = ref<string | null>(null);
             const threeJSScene = ref<InstanceType<typeof ThreeJSScene> | null>(null);
             const isProductionTracking = ref(false);
             const modelLoaded = ref(false);
+            const isDarkMode = ref(true);
 
-            const isDarkMode = ref(true); // Start with dark mode
+            const dataLoaded = ref(false); // Indicates if Excel data has been loaded
 
-            // Method to handle file upload event
+            const totalUnits = ref<number>(0);
+            const notStartedCount = ref<number>(0);
+            const notStartedPercentage = ref<string>('0.00');
+
             const onFileUploaded = (name: string) => {
-                // Remove the .3dm extension from the file name
                 fileName.value = name.replace(/\.3dm$/, '');
                 console.log('File name received in App.vue without extension:', fileName.value);
             };
 
-
             const toggleTheme = () => {
                 isDarkMode.value = !isDarkMode.value;
-
-                // Make sure the threeJSScene ref is populated before trying to access it
                 if (threeJSScene.value) {
-                    threeJSScene.value.toggleBackground(isDarkMode.value); // Call the toggleBackground method
+                    threeJSScene.value.toggleBackground(isDarkMode.value);
                 }
             };
 
-            // Instantiate ProductionColorHandler to get colors and labels
-            const productionColorHandler = new ProductionColorHandler();
+            // Initialize ProductionColorHandler to access colorMapping
+            const productionColorHandler = new ProductionColorHandler(0);
             const productionColorMapping = ref<{ [label: string]: string }>({});
 
             // Convert THREE.Color to CSS color strings for use in the legend
-            Object.keys(productionColorHandler['colorMapping']).forEach(phase => {
-                const color = productionColorHandler['colorMapping'][phase] as THREE.Color;
+            Object.keys(productionColorHandler.colorMapping).forEach((phase) => {
+                const color = productionColorHandler.colorMapping[phase];
                 productionColorMapping.value[phase] = `#${color.getHexString()}`;
             });
 
@@ -116,10 +126,11 @@
                 if (threeJSScene.value && typeof threeJSScene.value.addObjectsToScene === 'function') {
                     threeJSScene.value.addObjectsToScene(objects);
                 }
-                modelLoaded.value = true; // Mark the model as loaded
+                modelLoaded.value = true;
             };
 
             const toggleMode = () => {
+                console.log('Toggling Production Mode. isProductionTracking:', isProductionTracking.value);
                 if (threeJSScene.value && typeof threeJSScene.value.toggleMode === 'function') {
                     threeJSScene.value.toggleMode(isProductionTracking.value);
                 }
@@ -129,38 +140,65 @@
                 console.log('handleExcelUpload triggered in App.vue');
                 if (threeJSScene.value && typeof threeJSScene.value.handleExcelUpload === 'function') {
                     console.log('Calling handleExcelUpload in ThreeJSScene.vue...');
-                    await threeJSScene.value.handleExcelUpload(event);  // Let ThreeJSScene handle the file upload
-                } else {
-                    console.log('threeJSScene.value is null or handleExcelUpload is not a function');
+                    await threeJSScene.value.handleExcelUpload(event);
+                    dataLoaded.value = true;
                 }
             };
 
-            const updateCounts = (newPhaseCounts: Record<string, number>, newTotalUnits: number) => {
-                console.log('Updating counts after production colors are applied...');
-                phaseCounts.value = { ...newPhaseCounts };  // Update reactive phaseCounts
-                totalUnits.value = newTotalUnits;
-                console.log('Phase Counts updated:', phaseCounts.value);
-                console.log('Total Units updated:', totalUnits.value);
+            const handleUpdateTotalUnits = (units: number) => {
+                totalUnits.value = units;
             };
 
-
-
-
-            // Unit counts and percentages - initialize to 0 for all phases
-            const phaseCounts = ref < { [label: string]: number } > ({
-                "Released": 0,
-                "Assembly Started": 0,
-                "Assembly Finished": 0,
-                "Crated": 0,
-                "On Site": 0,
-                "Installed": 0
+            // Watch for changes in isProductionTracking
+            watch(isProductionTracking, (newVal) => {
+                if (newVal && !dataLoaded.value) {
+                    // Only initialize counts if data has not been loaded
+                    initializeCounts();
+                }
             });
-            const totalUnits = ref < number > (0);
-            const notStartedCount = computed(() => totalUnits.value - Object.values(phaseCounts.value).reduce((a, b) => a + b, 0));
-            const notStartedPercentage = computed(() => totalUnits.value > 0 ? ((notStartedCount.value / totalUnits.value) * 100).toFixed(2) : 0);
 
-            const getPhasePercentage = (label: string) => {
-                return totalUnits.value > 0 ? ((phaseCounts.value[label] / totalUnits.value) * 100).toFixed(2) : '0';
+            const phaseCounts = ref<Record<string, number>>({
+                'Released': 0,
+                'Milling Complete': 0,
+                'Panel Assembly Started': 0,
+                'Panel Assembly Complete': 0,
+                'Panel Stored On Site': 0,
+                'Panel Installed': 0,
+                'Panel Turned Over': 0,
+            });
+
+            const initializeCounts = () => {
+                phaseCounts.value = {
+                    'Released': 0,
+                    'Milling Complete': 0,
+                    'Panel Assembly Started': 0,
+                    'Panel Assembly Complete': 0,
+                    'Panel Stored On Site': 0,
+                    'Panel Installed': 0,
+                    'Panel Turned Over': 0,
+                };
+                totalUnits.value = 0;
+                notStartedCount.value = 0;
+                notStartedPercentage.value = '0.00';
+            };
+
+            const getPhasePercentage = (label: string | number) => {
+                const key = String(label);
+                if (totalUnits.value > 0) {
+                    const percentage = (phaseCounts.value[key] / totalUnits.value) * 100;
+                    return percentage.toFixed(2);
+                } else {
+                    return '0.00';
+                }
+            };
+
+            const updateCounts = (data: UpdateCountsData) => {
+                phaseCounts.value = { ...data.phaseCounts };
+                totalUnits.value = data.totalUnits;
+                notStartedCount.value = data.notStarted;
+                notStartedPercentage.value = data.notStartedPercentage.toFixed(2);
+                console.log('Received data in updateCounts:', data);
+                console.log('Total Units is now:', totalUnits.value);
             };
 
             return {
@@ -181,6 +219,7 @@
                 updateCounts,
                 isDarkMode,
                 toggleTheme,
+                handleUpdateTotalUnits,
             };
         },
     });
@@ -205,7 +244,7 @@
         transform: translateX(-50%);
         font-size: 18px;
         font-weight: bold;
-        color: #333;              
+        color: #333;
         z-index: 1000; /* Ensure it's on top of other elements */
     }
 
@@ -233,7 +272,7 @@
         margin-top: 5px;
     }
 
-    input[type="checkbox"] {
+    input[type='checkbox'] {
         display: none;
     }
 
@@ -248,7 +287,7 @@
     }
 
         .slider:before {
-            content: "";
+            content: '';
             position: absolute;
             height: 20px;
             width: 20px;
@@ -264,7 +303,7 @@
     }
 
     input:checked + .slider {
-        background-color: #2196F3;
+        background-color: #2196f3;
     }
 
     .mode-text {
@@ -275,7 +314,7 @@
         text-align: center;
     }
 
-    label[for="excelUpload"] {
+    label[for='excelUpload'] {
         font-size: 16px;
         font-weight: bold;
         color: #333;
@@ -344,5 +383,4 @@
         width: 200px; /* Adjust the size of the logo */
         height: auto;
     }
-
 </style>

@@ -81,40 +81,32 @@ export default defineComponent({
 });
 ;
 function __VLS_template() {
-    const __VLS_ctx = {};
-    const __VLS_localComponents = {
-        ...{},
-        ...{},
-        ...__VLS_ctx,
-    };
+    let __VLS_ctx;
+    /* Components */
+    let __VLS_otherComponents;
+    let __VLS_own;
+    let __VLS_localComponents;
     let __VLS_components;
-    const __VLS_localDirectives = {
-        ...{},
-        ...__VLS_ctx,
-    };
-    let __VLS_directives;
     let __VLS_styleScopedClasses;
     // CSS variable injection 
     // CSS variable injection end 
     let __VLS_resolvedLocalAndGlobalComponents;
     __VLS_elementAsFunction(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({});
     __VLS_elementAsFunction(__VLS_intrinsicElements.input)({ ...{ onChange: (__VLS_ctx.onFileChange) }, type: ("file"), });
+    // @ts-ignore
+    [onFileChange,];
     __VLS_elementAsFunction(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({ ref: ("canvasContainer"), ...{ class: ("canvas-container") }, });
-    // @ts-ignore navigation for `const canvasContainer = ref()`
-    __VLS_ctx.canvasContainer;
-    __VLS_styleScopedClasses['canvas-container'];
+    // @ts-ignore
+    (__VLS_ctx.canvasContainer);
+    // @ts-ignore
+    [canvasContainer,];
+    if (typeof __VLS_styleScopedClasses === 'object' && !Array.isArray(__VLS_styleScopedClasses)) {
+        __VLS_styleScopedClasses['canvas-container'];
+    }
     var __VLS_slots;
-    var __VLS_inheritedAttrs;
-    const __VLS_refs = {
-        "canvasContainer": __VLS_nativeElements['div'],
-    };
-    var $refs;
-    return {
-        slots: __VLS_slots,
-        refs: $refs,
-        attrs: {},
-    };
+    return __VLS_slots;
+    const __VLS_componentsOption = {};
+    const __VLS_name = 'ThreeJSScene';
+    let __VLS_internalComponent;
 }
-;
-let __VLS_self;
 //# sourceMappingURL=ThreeJSScene-bkup.vue.js.map

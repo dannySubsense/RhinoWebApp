@@ -10,19 +10,22 @@ export class ProcessExcelFile {
             throw new Error("Worksheet not found.");
         }
         const parsedData = [];
-        worksheet.eachRow((row, rowNumber) => {
+        // Get the headers from the first row
+        const headerRow = worksheet.getRow(1);
+        const headers = [];
+        headerRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+            headers[colNumber - 1] = cell.text.trim();
+        });
+        // Iterate over the rows, starting from the second row
+        worksheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
             if (rowNumber === 1)
-                return; // Skip header
-            const entry = {
-                PID: row.getCell(1).value, // Assuming PID is in the first column
-                Released: row.getCell(2).value,
-                AssemblyStarted: row.getCell(3).value,
-                AssemblyFinished: row.getCell(4).value,
-                Crated: row.getCell(5).value,
-                OnSite: row.getCell(6).value,
-                Installed: row.getCell(7).value,
-            };
-            parsedData.push(entry);
+                return; // Skip header row
+            const rowData = {};
+            row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                const header = headers[colNumber - 1];
+                rowData[header] = cell.value;
+            });
+            parsedData.push(rowData);
         });
         return parsedData;
     }

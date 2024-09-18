@@ -149,70 +149,84 @@ export default defineComponent({
 });
 ;
 function __VLS_template() {
-    const __VLS_ctx = {};
-    const __VLS_localComponents = {
-        ...{},
-        ...{},
-        ...__VLS_ctx,
-    };
+    let __VLS_ctx;
+    /* Components */
+    let __VLS_otherComponents;
+    let __VLS_own;
+    let __VLS_localComponents;
     let __VLS_components;
-    const __VLS_localDirectives = {
-        ...{},
-        ...__VLS_ctx,
-    };
-    let __VLS_directives;
     let __VLS_styleScopedClasses;
     // CSS variable injection 
     // CSS variable injection end 
     let __VLS_resolvedLocalAndGlobalComponents;
     __VLS_elementAsFunction(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({ ...{ onMousedown: (__VLS_ctx.onCanvasClick) }, ref: ("canvasContainer"), ...{ class: ("canvas-container") }, });
-    // @ts-ignore navigation for `const canvasContainer = ref()`
-    __VLS_ctx.canvasContainer;
+    // @ts-ignore
+    (__VLS_ctx.canvasContainer);
+    // @ts-ignore
+    [onCanvasClick, canvasContainer,];
     if (__VLS_ctx.selectedObjectData) {
         __VLS_elementAsFunction(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({ ...{ class: ("info-box") }, });
         __VLS_elementAsFunction(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({});
         __VLS_elementAsFunction(__VLS_intrinsicElements.strong, __VLS_intrinsicElements.strong)({});
+        // @ts-ignore
+        [selectedObjectData,];
         (__VLS_ctx.selectedObjectData.name);
+        // @ts-ignore
+        [selectedObjectData,];
         if (__VLS_ctx.selectedObjectData.release) {
             __VLS_elementAsFunction(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({});
             __VLS_elementAsFunction(__VLS_intrinsicElements.strong, __VLS_intrinsicElements.strong)({});
+            // @ts-ignore
+            [selectedObjectData,];
             (__VLS_ctx.selectedObjectData.release);
+            // @ts-ignore
+            [selectedObjectData,];
         }
         if (__VLS_ctx.selectedObjectData.elevation) {
             __VLS_elementAsFunction(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({});
             __VLS_elementAsFunction(__VLS_intrinsicElements.strong, __VLS_intrinsicElements.strong)({});
+            // @ts-ignore
+            [selectedObjectData,];
             (__VLS_ctx.selectedObjectData.elevation);
+            // @ts-ignore
+            [selectedObjectData,];
         }
         if (__VLS_ctx.selectedObjectData.pid) {
             __VLS_elementAsFunction(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({});
             __VLS_elementAsFunction(__VLS_intrinsicElements.strong, __VLS_intrinsicElements.strong)({});
+            // @ts-ignore
+            [selectedObjectData,];
             (__VLS_ctx.selectedObjectData.pid);
+            // @ts-ignore
+            [selectedObjectData,];
         }
         if (__VLS_ctx.selectedObjectData.pnl) {
             __VLS_elementAsFunction(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({});
             __VLS_elementAsFunction(__VLS_intrinsicElements.strong, __VLS_intrinsicElements.strong)({});
+            // @ts-ignore
+            [selectedObjectData,];
             (__VLS_ctx.selectedObjectData.pnl);
+            // @ts-ignore
+            [selectedObjectData,];
         }
         if (__VLS_ctx.selectedObjectData.unitDimension) {
             __VLS_elementAsFunction(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({});
             __VLS_elementAsFunction(__VLS_intrinsicElements.strong, __VLS_intrinsicElements.strong)({});
+            // @ts-ignore
+            [selectedObjectData,];
             (__VLS_ctx.selectedObjectData.unitDimension);
+            // @ts-ignore
+            [selectedObjectData,];
         }
     }
-    __VLS_styleScopedClasses['canvas-container'];
-    __VLS_styleScopedClasses['info-box'];
+    if (typeof __VLS_styleScopedClasses === 'object' && !Array.isArray(__VLS_styleScopedClasses)) {
+        __VLS_styleScopedClasses['canvas-container'];
+        __VLS_styleScopedClasses['info-box'];
+    }
     var __VLS_slots;
-    var __VLS_inheritedAttrs;
-    const __VLS_refs = {
-        "canvasContainer": __VLS_nativeElements['div'],
-    };
-    var $refs;
-    return {
-        slots: __VLS_slots,
-        refs: $refs,
-        attrs: {},
-    };
+    return __VLS_slots;
+    const __VLS_componentsOption = {};
+    const __VLS_name = 'ThreeJSScene';
+    let __VLS_internalComponent;
 }
-;
-let __VLS_self;
 //# sourceMappingURL=ThreeJSScene%20-%20(09022024).vue.js.map

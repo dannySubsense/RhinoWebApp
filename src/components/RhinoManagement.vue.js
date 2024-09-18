@@ -127,20 +127,13 @@ export default defineComponent({
 });
 ;
 function __VLS_template() {
-    const __VLS_ctx = {};
-    const __VLS_localComponents = {
-        ...{},
-        ...{},
-        ...__VLS_ctx,
-    };
+    let __VLS_ctx;
+    /* Components */
+    let __VLS_otherComponents;
+    let __VLS_own;
+    let __VLS_localComponents;
     let __VLS_components;
-    const __VLS_localDirectives = {
-        ...{},
-        ...__VLS_ctx,
-    };
-    let __VLS_directives;
     let __VLS_styleScopedClasses;
-    __VLS_styleScopedClasses['rhino-management'];
     // CSS variable injection 
     // CSS variable injection end 
     let __VLS_resolvedLocalAndGlobalComponents;
@@ -148,21 +141,23 @@ function __VLS_template() {
     if (__VLS_ctx.showUploadBox) {
         __VLS_elementAsFunction(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({ ...{ class: ("rhino-management") }, });
         __VLS_elementAsFunction(__VLS_intrinsicElements.h2, __VLS_intrinsicElements.h2)({});
+        // @ts-ignore
+        [showUploadBox,];
         __VLS_elementAsFunction(__VLS_intrinsicElements.input)({ ...{ onChange: (__VLS_ctx.onFileChange) }, type: ("file"), accept: (".3dm"), });
+        // @ts-ignore
+        [onFileChange,];
         __VLS_elementAsFunction(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({ ...{ onClick: (__VLS_ctx.processFile) }, disabled: ((!__VLS_ctx.file)), });
+        // @ts-ignore
+        [processFile, file,];
     }
-    __VLS_styleScopedClasses['canvas-container'];
-    __VLS_styleScopedClasses['rhino-management'];
+    if (typeof __VLS_styleScopedClasses === 'object' && !Array.isArray(__VLS_styleScopedClasses)) {
+        __VLS_styleScopedClasses['canvas-container'];
+        __VLS_styleScopedClasses['rhino-management'];
+    }
     var __VLS_slots;
-    var __VLS_inheritedAttrs;
-    const __VLS_refs = {};
-    var $refs;
-    return {
-        slots: __VLS_slots,
-        refs: $refs,
-        attrs: {},
-    };
+    return __VLS_slots;
+    const __VLS_componentsOption = {};
+    const __VLS_name = 'RhinoManagement';
+    let __VLS_internalComponent;
 }
-;
-let __VLS_self;
 //# sourceMappingURL=RhinoManagement.vue.js.map

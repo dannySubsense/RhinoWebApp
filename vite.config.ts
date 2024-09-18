@@ -6,12 +6,13 @@ export default defineConfig({
     plugins: [vue()],
     resolve: {
         alias: {
-            'ws': path.resolve(__dirname, './node_modules/ws/index.js'),
+            // Define your aliases here
         },
     },
+    base: './', // Relative paths for GitHub Pages
     build: {
         rollupOptions: {
-            external: ['ws'],
+            // Add any external dependencies if needed
         },
     },
     server: {
@@ -21,8 +22,8 @@ export default defineConfig({
                 path.resolve(__dirname, 'node_modules/rhino3dm'), // Allow serving .wasm files
             ],
         },
-        mimeTypes: {
-            'application/wasm': ['wasm'], // Explicitly declare MIME type for .wasm files
+        hmr: {
+            protocol: 'ws', // Use WebSockets for HMR
         },
     },
 });

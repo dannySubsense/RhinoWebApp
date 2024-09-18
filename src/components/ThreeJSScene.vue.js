@@ -16,7 +16,45 @@ export default defineComponent({
             required: false,
         },
     },
-    emits: ['handleExcelUpload', 'updateCounts'],
+    data() {
+        return {
+            cameraViews: ["View 1", "View 2", "View 3", "View 4"], // Define as an array of strings
+            savedPositions: {
+                "View 1": "Camera Position",
+                "View 2": "Camera Position",
+                "View 3": "Camera Position",
+                "View 4": "Camera Position",
+            }, // Define the object as a record with string keys and values
+            selectedView: "", // Track the currently selected view (only one active at a time)  
+            isSaving: false, // Track if the user is currently saving a camera position
+        };
+    },
+    methods: {
+        // Select the view (radio button behavior)
+        selectView(view) {
+            this.selectedView = view; // Only one view can be selected at a time
+        },
+        // Momentary save action (only allowed when the view is selected)
+        saveView(view) {
+            if (this.selectedView === view) {
+                console.log(`Saving camera position for ${view}`);
+                // Trigger the save action momentarily
+                this.isSaving = true;
+                setTimeout(() => {
+                    // this.saveCameraPosition(view);
+                    this.isSaving = false;
+                }, 250); // Delay the save action for 250ms
+                // Get the current camera position and save it to the selected view
+                // this.savedPositions[view] = this.getCameraPosition(view);
+                this.savedPositions[view] = "Camera Position"; // Placeholder for camera position
+            }
+        },
+        // Get the saved camers position for the specified view
+        getCameraPosition(view) {
+            return this.savedPositions[view];
+        },
+    },
+    emits: ['handleExcelUpload', 'updateCounts', 'updateTotalUnits'],
     setup(props, { emit }) {
         const canvasContainer = ref(null);
         let scene;
@@ -28,9 +66,11 @@ export default defineComponent({
         const selectedObjectData = ref(null);
         let selectedObject = null;
         let originalColor = null;
-        // Instantiate ProductionColorHandler and ProcessExcelFile here
-        const productionColorHandler = new ProductionColorHandler(); // Correctly initialize this instance
-        const processExcelFile = new ProcessExcelFile(); // Correctly initialize this instance                        
+        let productionColorHandler;
+        // Instantiate ProductionColorHandler and ProcessExcelFile here            
+        const processExcelFile = new ProcessExcelFile(); // Correctly initialize this instance
+        // In the setup function (Vue 3 Composition API)
+        const selectedView = ref(""); // Reactive variable to track the selected view
         const initThreeJS = () => {
             // Initialize the scene
             scene = new THREE.Scene();
@@ -114,6 +154,19 @@ export default defineComponent({
                 // Add the object to the scene
                 scene.add(object);
             });
+            // After adding objects to the scene, count total units
+            const totalUnits = countTotalUnitsInScene();
+            // Instantiate ProductionColorHandler with totalUnits
+            productionColorHandler = new ProductionColorHandler(totalUnits);
+        };
+        const countTotalUnitsInScene = () => {
+            let totalUnits = 0;
+            scene.traverse((object) => {
+                if (object.userData?.attributes?.userStrings) {
+                    totalUnits++;
+                }
+            });
+            return totalUnits;
         };
         const onCanvasClick = (event) => {
             if (!canvasContainer.value || !camera || !scene)
@@ -191,14 +244,11 @@ export default defineComponent({
         const toggleMode = (isProductionTracking) => {
             console.log("Toggle Mode called. Production Tracking:", isProductionTracking);
             if (isProductionTracking) {
-                let totalPanels = 0; // Initialize panel count
-                // Apply the productionTrackingColor (initialized to gray) to all objects
+                // Apply production colors
                 scene.traverse((object) => {
                     if (object.userData?.attributes?.productionTrackingColor) {
-                        totalPanels++; // Count the object
                         const prodColor = new THREE.Color(object.userData.attributes.productionTrackingColor);
                         if (object.material) {
-                            console.log("Changing color for object:", object);
                             if (object.material instanceof THREE.MeshStandardMaterial) {
                                 object.material.color.copy(prodColor);
                             }
@@ -211,16 +261,25 @@ export default defineComponent({
                         }
                     }
                 });
-                // Emit total panel count to App.vue for the "Total" count in the legend
-                emit('updateCounts', productionColorHandler.getPhaseCounts(), totalPanels);
-                console.log(`Total panels in Production Tracking Mode: ${totalPanels}`);
+                // Emit counts and percentages without modifying totalUnits
+                const { percentages, notStartedPercentage } = productionColorHandler.getPercentages();
+                const { phaseCounts, totalUnits: handlerTotalUnits } = productionColorHandler;
+                emit('updateCounts', {
+                    phaseCounts,
+                    totalUnits: handlerTotalUnits, // Use totalUnits from productionColorHandler
+                    percentages,
+                    notStarted: productionColorHandler.notStarted,
+                    notStartedPercentage
+                });
+                console.log(`Production Tracking Mode activated.`);
             }
             else {
-                // Revert to the original Rhino colors
+                // Revert colors as before
                 scene.traverse((object) => {
-                    if (object.userData?.attributes?.objectColor) {
-                        const originalColor = new THREE.Color(object.userData.attributes.objectColor.r / 255, object.userData.attributes.objectColor.g / 255, object.userData.attributes.objectColor.b / 255);
-                        if (object.material) {
+                    // Revert to original color or default color
+                    if (object.material && object.userData?.attributes?.originalColor) {
+                        const originalColor = new THREE.Color(object.userData.attributes.originalColor);
+                        if (object.material instanceof THREE.MeshStandardMaterial) {
                             object.material.color.copy(originalColor);
                         }
                     }
@@ -228,28 +287,41 @@ export default defineComponent({
             }
         };
         const handleExcelUpload = async (event) => {
-            console.log('File selected for upload');
-            const file = event.target.files?.[0];
-            if (file) {
-                console.log(`Selected file: ${file.name}`);
-                console.log('Attempting to parse the Excel file.');
-                try {
-                    // Parse the Excel file
-                    const parsedData = await processExcelFile.parseExcelFile(file);
-                    console.log('Parsed Excel Data:', parsedData);
-                    console.log('Applying production colors to the scene...');
-                    // Here is where ProductionColorHandler should be called
-                    productionColorHandler.applyProductionColors(parsedData, scene);
-                    console.log('Production colors applied to the scene.');
-                    // After production colors are applied in ThreeJSScene.vue:
-                    const phaseCounts = productionColorHandler.getPhaseCounts();
-                    const totalUnits = productionColorHandler.getTotalUnits();
-                    // Emit the counts back to App.vue
-                    emit('updateCounts', phaseCounts, totalUnits);
+            console.log('handleExcelUpload triggered in ThreeJSScene.vue');
+            const fileInput = event.target;
+            const file = fileInput.files ? fileInput.files[0] : null;
+            if (!file) {
+                console.error('No file selected');
+                return;
+            }
+            try {
+                // Parse the Excel file
+                const parsedData = await processExcelFile.parseExcelFile(file);
+                console.log('Parsed Excel Data:', parsedData);
+                // Ensure productionColorHandler is instantiated
+                if (!productionColorHandler) {
+                    console.error('ProductionColorHandler is not initialized.');
+                    return;
                 }
-                catch (error) {
-                    console.error("Error parsing Excel file:", error);
-                }
+                // Apply production colors using productionColorHandler
+                productionColorHandler.applyProductionColors(parsedData, scene);
+                // Get percentages for each phase after colors have been applied
+                const { percentages, notStartedPercentage } = productionColorHandler.getPercentages();
+                // Emit counts and percentages back to App.vue
+                const { phaseCounts, totalUnits: handlerTotalUnits } = productionColorHandler;
+                console.log('Emitting counts and percentages:', { phaseCounts, handlerTotalUnits, percentages, notStartedPercentage });
+                emit('updateCounts', {
+                    phaseCounts,
+                    totalUnits: handlerTotalUnits,
+                    percentages,
+                    notStarted: productionColorHandler.notStarted,
+                    notStartedPercentage,
+                    updateTotalUnits: productionColorHandler.totalUnits,
+                });
+            }
+            catch (error) {
+                // Error handling
+                console.error("Error parsing Excel file:", error);
             }
         };
         const applyColorsToScene = async () => {
@@ -292,76 +364,141 @@ export default defineComponent({
 });
 ;
 function __VLS_template() {
-    const __VLS_ctx = {};
-    const __VLS_localComponents = {
-        ...{},
-        ...{},
-        ...__VLS_ctx,
-    };
+    let __VLS_ctx;
+    /* Components */
+    let __VLS_otherComponents;
+    let __VLS_own;
+    let __VLS_localComponents;
     let __VLS_components;
-    const __VLS_localDirectives = {
-        ...{},
-        ...__VLS_ctx,
-    };
-    let __VLS_directives;
     let __VLS_styleScopedClasses;
-    __VLS_styleScopedClasses['canvas-container'];
     // CSS variable injection 
     // CSS variable injection end 
     let __VLS_resolvedLocalAndGlobalComponents;
     __VLS_elementAsFunction(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({ ...{ onMousedown: (__VLS_ctx.onCanvasClick) }, ref: ("canvasContainer"), ...{ class: ("canvas-container") }, });
-    // @ts-ignore navigation for `const canvasContainer = ref()`
-    __VLS_ctx.canvasContainer;
+    // @ts-ignore
+    (__VLS_ctx.canvasContainer);
+    // @ts-ignore
+    [onCanvasClick, canvasContainer,];
     if (__VLS_ctx.selectedObjectData) {
         __VLS_elementAsFunction(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({ ...{ class: ("info-box") }, });
         __VLS_elementAsFunction(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({});
         __VLS_elementAsFunction(__VLS_intrinsicElements.strong, __VLS_intrinsicElements.strong)({});
+        // @ts-ignore
+        [selectedObjectData,];
         (__VLS_ctx.selectedObjectData.name);
+        // @ts-ignore
+        [selectedObjectData,];
         if (__VLS_ctx.selectedObjectData.release) {
             __VLS_elementAsFunction(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({});
             __VLS_elementAsFunction(__VLS_intrinsicElements.strong, __VLS_intrinsicElements.strong)({});
+            // @ts-ignore
+            [selectedObjectData,];
             (__VLS_ctx.selectedObjectData.release);
+            // @ts-ignore
+            [selectedObjectData,];
         }
         if (__VLS_ctx.selectedObjectData.elevation) {
             __VLS_elementAsFunction(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({});
             __VLS_elementAsFunction(__VLS_intrinsicElements.strong, __VLS_intrinsicElements.strong)({});
+            // @ts-ignore
+            [selectedObjectData,];
             (__VLS_ctx.selectedObjectData.elevation);
+            // @ts-ignore
+            [selectedObjectData,];
         }
         if (__VLS_ctx.selectedObjectData.pid) {
             __VLS_elementAsFunction(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({});
             __VLS_elementAsFunction(__VLS_intrinsicElements.strong, __VLS_intrinsicElements.strong)({});
+            // @ts-ignore
+            [selectedObjectData,];
             (__VLS_ctx.selectedObjectData.pid);
+            // @ts-ignore
+            [selectedObjectData,];
         }
         if (__VLS_ctx.selectedObjectData.pnl) {
             __VLS_elementAsFunction(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({});
             __VLS_elementAsFunction(__VLS_intrinsicElements.strong, __VLS_intrinsicElements.strong)({});
+            // @ts-ignore
+            [selectedObjectData,];
             (__VLS_ctx.selectedObjectData.pnl);
+            // @ts-ignore
+            [selectedObjectData,];
         }
         if (__VLS_ctx.selectedObjectData.unitDimension) {
             __VLS_elementAsFunction(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({});
             __VLS_elementAsFunction(__VLS_intrinsicElements.strong, __VLS_intrinsicElements.strong)({});
+            // @ts-ignore
+            [selectedObjectData,];
             (__VLS_ctx.selectedObjectData.unitDimension);
+            // @ts-ignore
+            [selectedObjectData,];
         }
         if (__VLS_ctx.selectedObjectData.productionTrackingPhase) {
             __VLS_elementAsFunction(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({});
             __VLS_elementAsFunction(__VLS_intrinsicElements.strong, __VLS_intrinsicElements.strong)({});
+            // @ts-ignore
+            [selectedObjectData,];
             (__VLS_ctx.selectedObjectData.productionTrackingPhase);
+            // @ts-ignore
+            [selectedObjectData,];
         }
     }
-    __VLS_styleScopedClasses['canvas-container'];
-    __VLS_styleScopedClasses['info-box'];
+    if (__VLS_ctx.isProductionTracking) {
+        __VLS_elementAsFunction(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({ ...{ class: ("camera-control-box") }, });
+        __VLS_elementAsFunction(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({ ...{ class: ("camera-controls-header") }, });
+        __VLS_elementAsFunction(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({ ...{ class: ("select-header") }, });
+        // @ts-ignore
+        [isProductionTracking,];
+        __VLS_elementAsFunction(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({ ...{ class: ("save-header") }, });
+        for (const [view] of __VLS_getVForSourceType((__VLS_ctx.cameraViews))) {
+            __VLS_elementAsFunction(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({ ...{ class: ("camera-view-row") }, key: ((view)), });
+            __VLS_elementAsFunction(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({ ...{ onClick: (...[$event]) => {
+                        if (!((__VLS_ctx.isProductionTracking)))
+                            return;
+                        __VLS_ctx.selectView(view);
+                        // @ts-ignore
+                        [cameraViews, selectView,];
+                    } }, ...{ class: ("circle-button select-button") }, ...{ class: (({ selected: __VLS_ctx.selectedView === view })) }, });
+            __VLS_styleScopedClasses = ({ selected: selectedView === view });
+            // @ts-ignore
+            [selectedView,];
+            __VLS_elementAsFunction(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({ ...{ class: ("camera-view-label") }, });
+            (view);
+            __VLS_elementAsFunction(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({ ...{ onClick: (...[$event]) => {
+                        if (!((__VLS_ctx.isProductionTracking)))
+                            return;
+                        __VLS_ctx.saveView(view);
+                        // @ts-ignore
+                        [saveView,];
+                    } }, ...{ class: ("circle-button save-button") }, ...{ class: (({ active: __VLS_ctx.isSaving && __VLS_ctx.selectedView === view })) }, disabled: ((__VLS_ctx.selectedView !== view)), });
+            __VLS_styleScopedClasses = ({ active: isSaving && selectedView === view });
+            // @ts-ignore
+            [selectedView, selectedView, isSaving,];
+            __VLS_elementAsFunction(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({ ...{ class: ("camera-position") }, });
+            (__VLS_ctx.getCameraPosition(view));
+            // @ts-ignore
+            [getCameraPosition,];
+        }
+    }
+    if (typeof __VLS_styleScopedClasses === 'object' && !Array.isArray(__VLS_styleScopedClasses)) {
+        __VLS_styleScopedClasses['canvas-container'];
+        __VLS_styleScopedClasses['info-box'];
+        __VLS_styleScopedClasses['camera-control-box'];
+        __VLS_styleScopedClasses['camera-controls-header'];
+        __VLS_styleScopedClasses['select-header'];
+        __VLS_styleScopedClasses['save-header'];
+        __VLS_styleScopedClasses['camera-view-row'];
+        __VLS_styleScopedClasses['circle-button'];
+        __VLS_styleScopedClasses['select-button'];
+        __VLS_styleScopedClasses['camera-view-label'];
+        __VLS_styleScopedClasses['circle-button'];
+        __VLS_styleScopedClasses['save-button'];
+        __VLS_styleScopedClasses['camera-position'];
+    }
     var __VLS_slots;
-    var __VLS_inheritedAttrs;
-    const __VLS_refs = {
-        "canvasContainer": __VLS_nativeElements['div'],
-    };
-    var $refs;
-    return {
-        slots: __VLS_slots,
-        refs: $refs,
-        attrs: {},
-    };
+    return __VLS_slots;
+    const __VLS_componentsOption = {};
+    const __VLS_name = 'ThreeJSScene';
+    let __VLS_internalComponent;
 }
-;
-let __VLS_self;
 //# sourceMappingURL=ThreeJSScene.vue.js.map
